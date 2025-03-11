@@ -78,8 +78,6 @@ fun aboutMe(): String {
 }
 ```
 
-<img src="https://github.com/dublixdev/dublixdev/blob/output/github-contribution-grid-snake.svg" width="100%">
-
 **"Dasturlash - bu cheksiz o'rganish sarguzashti!"** 🚀
 ```
 
