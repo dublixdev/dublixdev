@@ -1,71 +1,88 @@
-name: CI va Snake Generatsiya
+name: 🐍 Contribution Snake & CI
 
 on:
-  push:
-    branches: [ main ]
   schedule:
-    - cron: "0 0 * * *"  # Har kuni soat 00:00 da
-  workflow_dispatch:     # Qo'lda ishga tushirish
+    - cron: "30 23 * * *"  # Har kuni soat 23:30 UTC (3:30 Toshkent vaqti)
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
 
 jobs:
   generate_snake:
-    name: Contribution Snake Yaratish
+    name: 🐍 Ilova Diagrammasi
     runs-on: ubuntu-latest
-    steps:
-      - name: Snake generatsiya
-        uses: Platane/snk@v2
-        with:
-          github_user_name: ${{ github.repository_owner }}
-          outputs: |
-            assets/github-snake.svg
-            assets/github-snake-dark.svg?palette=github-dark
+    permissions:
+      contents: write  # Commit qilish uchun ruxsat
 
-      - name: GitHubga Commit qilish
+    steps:
+      - name: 🛠️ Repozitoriyani klonlash
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # To'liq commit tarixi
+
+      - name: 📂 Papka yaratish
+        run: mkdir -p ./assets
+
+      - name: 🎨 Snake generatsiya
+        uses: Platane/snk@v2
+        id: generate_snake
+        with:
+          github_user_name: "dublixdev"  # O'z usernamingizni yozing
+          outputs: |
+            ./assets/github-snake.svg
+            ./assets/github-snake-dark.svg?palette=github-dark
+
+      - name: 💾 O'zgarishlarni saqlash
         uses: EndBug/add-and-commit@v9
         with:
           branch: main
-          message: "Snake yangilandi 🐍"
+          message: "🐍 Diagramma yangilandi [skip ci]"
           add: |
-            assets/github-snake.svg
-            assets/github-snake-dark.svg
-          author_name: GitHub Actions
-          author_email: actions@github.com
+            ./assets/github-snake.svg
+            ./assets/github-snake-dark.svg
+          author_name: "GitHub Actions"
+          author_email: "actions@github.com"
 
-  php_ci:
-    name: PHP CI Pipeline
+  ci_pipeline:
+    name: 🧪 CI Pipeline
     runs-on: ubuntu-latest
     needs: generate_snake
+    strategy:
+      matrix:
+        php: ['8.2', '8.3']
+        
     steps:
-      - name: Kodni olish
-        uses: actions/checkout@v3
+      - name: 📥 Kodni olish
+        uses: actions/checkout@v4
 
-      - name: PHP sozlash
+      - name: 🐘 PHP sozlash
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: ${{ matrix.php }}
           extensions: mbstring, ctype, xml, json, dom, fileinfo
           coverage: pcov
 
-      - name: Composer Cache
+      - name: 📦 Composer Cache
         uses: actions/cache@v3
         with:
           path: vendor
-          key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+          key: php-${{ matrix.php }}-${{ hashFiles('**/composer.lock') }}
 
-      - name: Dependensiyalarni o'rnatish
+      - name: 🔨 Dependensiyalar
         run: composer install -n --prefer-dist --no-progress
 
-      - name: Environment fayl
-        run: cp .env.example .env
+      - name: 🔑 Environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
 
-      - name: Key generatsiya
-        run: php artisan key:generate
-
-      - name: Testlarni ishga tushirish
+      - name: 🧪 Testlar
         run: ./vendor/bin/phpunit --coverage-clover clover.xml
 
-      - name: Code Coverage
+      - name: 📊 Code Coverage
+        if: ${{ matrix.php == '8.3' }}
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: clover.xml
+          files: clover.xml
+          flags: php-unit-tests
